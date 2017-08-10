@@ -1,0 +1,261 @@
+// MainActivity
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.database.Cursor;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Toast;
+
+public class MainActivity extends Activity {
+    Datab datab;
+    EditText id, name, address;
+    String _id, _name, _address;
+//    Button insert, fetch, delete, update;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        datab = new Datab(this);
+        id = (EditText) findViewById(R.id.stu_id);
+        name = (EditText) findViewById(R.id.name);
+        address = (EditText) findViewById(R.id.address);
+//        _id = id.getText().toString();
+//        _name = name.getText().toString();
+//        _address = address.getText().toString();
+    }
+
+    public void insert(View view) {
+        _id=id.getText().toString();
+        _name=name.getText().toString();
+        _address=address.getText().toString();
+        boolean flag = datab.dataInsert(_id, _name, _address);
+        if (flag) {
+            Toast.makeText(MainActivity.this, "Data Inserted successfully", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(MainActivity.this, "Id is already exist.\nData Updated successfully", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void fetch(View view) {
+        _id=id.getText().toString().trim();
+        StringBuffer buffer = new StringBuffer();
+        Cursor cursor = datab.dataFetch(_id);
+        if (cursor.getCount() == 0) {
+            mess("Sorry", "Record is not available");
+            return;
+        }
+        while (cursor.moveToNext()) {
+            buffer.append("\n Id is " + cursor.getString(0));
+            buffer.append("\n Name is " + cursor.getString(1));
+            buffer.append("\n Address is " + cursor.getString(2));
+        }
+        mess("Student Record", buffer.toString());
+    }
+
+    public void mess(String title, String message) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(title);
+        builder.setMessage(message);
+        builder.setCancelable(true);
+        builder.show();
+    }
+
+    public void delete(View view) {
+        _id=id.getText().toString();
+        int x=datab.dataDelete(_id);
+        if (x>0)
+        {
+            Toast.makeText(MainActivity.this, "Data deleted", Toast.LENGTH_SHORT).show();
+        }
+        else {
+            Toast.makeText(MainActivity.this, "Data not deleted", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void update(View view) {
+        _id=id.getText().toString();
+        _name=name.getText().toString();
+        _address=address.getText().toString();
+       int x= datab.dataUpdate(_id, _name, _address);
+        if (x>0) {
+            Toast.makeText(MainActivity.this, "Data updated", Toast.LENGTH_SHORT).show();
+        }
+        else {
+            Toast.makeText(MainActivity.this, "Data not updated", Toast.LENGTH_SHORT).show();
+        }
+    }
+}
+
+
+
+
+// DBTest
+
+package com.example.farhan_rehan.dbtest;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.widget.Toast;
+
+/**
+ * Created by Farhan_Rehan on 8/16/2016.
+ */
+public class Datab extends SQLiteOpenHelper {
+    private static final String DATABASE_NAME = "Stu_db";
+    private static final String TABLE_NAME = "Student";
+    private static final String COL_1 = "Id";
+    private static final String COL_2 = "Name";
+    private static final String COL_3 = "Address";
+    SQLiteDatabase sqLiteDatabase;
+
+    public Datab(Context context) {
+        super(context, DATABASE_NAME, null, 1);
+        sqLiteDatabase = this.getWritableDatabase();
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        db.execSQL("create table " + TABLE_NAME + " (ID TEXT, Name TEXT, Address TEXT) ");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        db.execSQL("Drop table if Exist " + TABLE_NAME);
+    }
+
+    public boolean dataInsert(String id, String name, String address) {
+        Cursor cursor = sqLiteDatabase.rawQuery("select id from " + TABLE_NAME + " where id =?", new String[]{id});
+        if (cursor.getCount() == 0) {
+            ContentValues contentValues = new ContentValues();
+            contentValues.put(COL_1, id);
+            contentValues.put(COL_2, name);
+            contentValues.put(COL_3, address);
+            sqLiteDatabase.insert(TABLE_NAME, null, contentValues);
+            return true;
+        } else {
+            ContentValues contentValues = new ContentValues();
+            contentValues.put(COL_2, name);
+            contentValues.put(COL_3, address);
+            sqLiteDatabase.update(TABLE_NAME, contentValues, "id=?", new String[]{id});
+            return false;
+        }
+
+
+    }
+
+    public Cursor dataFetch(String id) {
+        Cursor cursor = sqLiteDatabase.rawQuery("select * from " + TABLE_NAME + " where id =?", new String[]{id});
+        return cursor;
+    }
+
+    public int dataDelete(String id) {
+        int in = sqLiteDatabase.delete(TABLE_NAME, "Id=?", new String[]{id});
+        return in;
+    }
+
+    public int dataUpdate(String id, String name, String address) {
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(COL_2, name);
+        contentValues.put(COL_3, address);
+        int x = sqLiteDatabase.update(TABLE_NAME, contentValues, "id=?", new String[]{id});
+        return x;
+    }
+}
+
+
+
+// activity main
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="@dimen/activity_horizontal_margin"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:id="@+id/stu_id"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="52dp"
+        android:background="@drawable/edit_text_style"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:id="@+id/name"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/edit_text_style"
+        android:layout_below="@+id/stu_id"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
+    <EditText
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:id="@+id/address"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/edit_text_style"
+        android:layout_below="@+id/name"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
+    <Button
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:text="Insert"
+        android:layout_marginTop="5dp"
+        android:id="@+id/insert"
+        android:layout_below="@+id/address"
+        android:layout_centerHorizontal="true"
+        android:onClick="insert"/>
+
+    <Button
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:text="Fetch"
+        android:id="@+id/fetch"
+        android:layout_marginTop="5dp"
+        android:layout_below="@+id/insert"
+        android:layout_centerHorizontal="true"
+        android:onClick="fetch"/>
+
+    <Button
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:text="Delete"
+        android:id="@+id/delete"
+        android:layout_marginTop="5dp"
+        android:layout_below="@+id/fetch"
+        android:onClick="delete"
+        android:layout_centerHorizontal="true" />
+
+    <Button
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:text="Update"
+        android:id="@+id/update"
+        android:layout_below="@+id/delete"
+        android:layout_centerHorizontal="true"
+        android:onClick="update"/>
+
+</RelativeLayout>
