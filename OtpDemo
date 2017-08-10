@@ -1,0 +1,190 @@
+// IncomingSms.java
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
+import android.telephony.SmsMessage;
+import android.util.Log;
+
+public class IncomingSms extends BroadcastReceiver {
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+
+        if (intent.getAction().equals("android.provider.Telephony.SMS_RECEIVED")) {
+            Log.d("intent", "intent " + intent);
+        }
+        final Bundle bundle = intent.getExtras();
+       /* IntentFilter filter = new IntentFilter(android.provider.Telephony.SMS_RECEIVED);
+        this.registerReceiver(myBroadcastReceiver, filter);*/
+        Log.d("bundle", "bundle " + bundle);
+        try {
+            if (bundle != null) {
+                final Object[] pdusObj = (Object[]) bundle.get("pdus");
+                for (int i = 0; i < pdusObj.length; i++) {
+                    SmsMessage currentMessage = SmsMessage.createFromPdu((byte[]) pdusObj[i]);
+                    String phoneNumber = currentMessage.getDisplayOriginatingAddress();
+                    String senderNum = phoneNumber;
+                    Log.d("senderNum", "senderNum " + senderNum);
+                    String message = currentMessage.getDisplayMessageBody();
+                    Log.d("message", "message " + message);
+
+                    String otp = message.replaceAll("[^0-9]", "");
+                    Log.d("otp", "otp " + otp);
+                    try {
+                        if (senderNum.equals("AM-BIZZGN")) {
+                            Log.d("otp1", "otp1 " + otp);
+
+                           // Intent i1 = new Intent();
+                            intent.putExtra("otp", otp);
+                            LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+                            OtpActivity Sms = new OtpActivity();
+                            Sms.recivedSms(otp);
+
+                        }
+                    } catch (Exception e) {
+                    }
+
+                }
+            }
+
+        } catch (Exception e) {
+
+        }
+    }
+}
+
+
+// OTPActivity.java
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
+public class OtpActivity extends AppCompatActivity {
+
+    EditText ed_otp;
+    OtpActivity otpActivity;
+    Button button_send;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_otp);
+        otpActivity = this;
+        ed_otp = (EditText) findViewById(R.id.ed_otp);
+        button_send = (Button) findViewById(R.id.button_send);
+        button_send.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String url = "https://wwwcretail&mobilenum=8449815445";
+                getOtp(url);
+            }
+        });
+
+
+    }
+
+    @Override
+    public void onResume() {
+        LocalBroadcastManager.getInstance(otpActivity).registerReceiver(receiver, new IntentFilter("android.provider.Telephony.SMS_RECEIVED"));
+        super.onResume();
+    }
+
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        LocalBroadcastManager.getInstance(otpActivity).unregisterReceiver(receiver);
+    }
+
+    private BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals("android.provider.Telephony.SMS_RECEIVED")) {
+                final String message = intent.getStringExtra("otp");
+                Log.d("message1", "message1 " + message);
+                ed_otp.setText(message);
+                //Do whatever you want with the code here
+            }
+        }
+    };
+
+
+    public void recivedSms(String message) {
+        try {
+            Log.d("otp2", "otp2 " + message);
+            ed_otp.setText(message.toString());
+        } catch (Exception e) {
+        }
+    }
+
+
+    public void getOtp(String url) {
+        RequestQueue requestQueue = Volley.newRequestQueue(otpActivity);
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+               /* incomingSms = new IncomingSms();
+
+                otpActivity.registerReceiver(incomingSms, new IntentFilter("android.intent.action.DATA_SMS_RECEIVED"));
+                   unregisterReceiver(incomingSms);*/
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+            }
+        });
+        stringRequest.setRetryPolicy(new DefaultRetryPolicy(80000, DefaultRetryPolicy.DEFAULT_MAX_RETRIES, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        requestQueue.add(stringRequest);
+
+    }
+
+}
+
+
+// Manifest.xmml
+
+ <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.BROADCAST_SMS"/>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        <activity android:name=".OtpActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+         <receiver android:name=".IncomingSms">
+             <intent-filter android:priority="1">
+                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+             </intent-filter>
+         </receiver>
